@@ -18,6 +18,8 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou48hiK4c'
 
 metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
+newImageNameFormat = '%Y%m%d%H%M%S'
+parentFolderNameFormat = '%Y%m%d'
 
 def getService():
     creds = None
@@ -76,5 +78,9 @@ if __name__ == '__main__':
         print('Files:')
         for image in images:
             print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
-            print(datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat))
+            photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
+            newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
+                                           os.path.splitext(image['name'])[1])
+            parentFolderName = '{}'.format(photoTakenDateTime.strftime(parentFolderNameFormat))
+            print('{0} in {1} folder'.format(newFileName, parentFolderName))
     #folder = createFolder(service, 'JustTest', folderID)
