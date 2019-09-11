@@ -15,6 +15,7 @@ from google.auth.transport.requests import Request
 import datetime
 import time
 
+
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -24,7 +25,7 @@ metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 newImageNameFormat = '%Y%m%d%H%M%S'
 dateFolderNameFormat = '%Y%m%d'
 
-subfolderName = 'Sorted2'
+subfolderName = 'Sorted3'
 
 def getService():
     creds = None
@@ -104,29 +105,32 @@ def createFolderOrGetExisting(service, folderName, parentID):
 
 
 def processImage(service, sourceFolderID, newFolderID, image):
-    print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
-    photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
-    newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
-                                  os.path.splitext(image['name'])[1])
-    dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
-    try:
-        dateFolderID = createFolderOrGetExisting(service, dateFolderName, newFolderID)['id']
+    if 'time' in image['imageMediaMetadata'].keys():
+        print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
+        photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
+        newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
+                                      os.path.splitext(image['name'])[1])
+        dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
+        try:
+            dateFolderID = createFolderOrGetExisting(service, dateFolderName, newFolderID)['id']
 
-        metadata = {'name': newFileName}
-        newFile = service.files().copy(fileId=image['id'], body=metadata).execute()
-        service.files().update(fileId=newFile['id'], addParents=dateFolderID, removeParents=sourceFolderID).execute()
+            metadata = {'name': newFileName}
+            newFile = service.files().copy(fileId=image['id'], body=metadata).execute()
+            service.files().update(fileId=newFile['id'], addParents=dateFolderID, removeParents=sourceFolderID).execute()
 
-        # service.files().update(fileID=newFile['id'], addParents=dateFolderID).execute()
-        print('created file {0} in {1} folder (from {2} file)'.format(newFileName, dateFolderName, image['name']))
-    except errors.HttpError as err:
-        if err.resp.status in [500, 503, 504]:
-            print('Server error {}'.format(err.resp.status))
-            print('Retrying processing the file {} in 5 seconds...'.format(image['name']))
-            time.sleep(5)
-            processImage(service, sourceFolderID, newFolderID, image)
-        else:
-            print('Error during processing the file {}'.format(image['name']))
-            raise
+            # service.files().update(fileID=newFile['id'], addParents=dateFolderID).execute()
+            print('created file {0} in {1} folder (from {2} file)'.format(newFileName, dateFolderName, image['name']))
+        except errors.HttpError as err:
+            if err.resp.status in [500, 503, 504]:
+                print('Server error {}'.format(err.resp.status))
+                print('Retrying processing the file {} in 5 seconds...'.format(image['name']))
+                time.sleep(5)
+                processImage(service, sourceFolderID, newFolderID, image)
+            else:
+                print('Error during processing the file {}'.format(image['name']))
+                raise
+    else:
+        print('Cannot get the time for file {}'.format(image['name']))
 
 
 if __name__ == '__main__':
