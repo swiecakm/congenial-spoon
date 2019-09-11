@@ -19,7 +19,7 @@ folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou4
 
 metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 newImageNameFormat = '%Y%m%d%H%M%S'
-parentFolderNameFormat = '%Y%m%d'
+dateFolderNameFormat = '%Y%m%d'
 
 subfolderName = 'Sorted'
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
             photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
             newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
                                            os.path.splitext(image['name'])[1])
-            parentFolderName = '{}'.format(photoTakenDateTime.strftime(parentFolderNameFormat))
-            print('{0} in {1} folder'.format(newFileName, parentFolderName))
+            dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
+            print('{0} in {1} folder'.format(newFileName, dateFolderName))
 
 
