@@ -15,7 +15,7 @@ import datetime
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou48hiK4c'
+folderLink = 'https://drive.google.com/drive/folders/1vt7MZIMWJtC3kESVvG0nraMqkYbyFBwl'
 
 metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 newImageNameFormat = '%Y%m%d%H%M%S'
@@ -53,7 +53,7 @@ def getImages(service, folderID):
     results = service.files().list(
         #to find other files metadata visit https://developers.google.com/drive/api/v3/reference/files
         fields="nextPageToken, files(id, name, imageMediaMetadata)",
-        q="mimeType contains 'image/' and '{}' in parents".format(folderID)).execute()
+        q="mimeType contains 'image/' and '{}' in parents and trashed=False".format(folderID)).execute()
 
     return results.get('files', [])
 
@@ -107,6 +107,12 @@ if __name__ == '__main__':
                                            os.path.splitext(image['name'])[1])
             dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
             dateFolderID = createFolderOrGetExisting(service, dateFolderName, subparentID)['id']
-            print('{0} in {1} folder'.format(newFileName, dateFolderName))
+
+            metadata = {'name': newFileName}
+            newFile = service.files().copy(fileId=image['id'], body=metadata).execute()
+            service.files().update(fileId=newFile['id'], addParents=dateFolderID, removeParents=rootParentID).execute()
+
+            #service.files().update(fileID=newFile['id'], addParents=dateFolderID).execute()
+            print('created file {0} in {1} folder (from {2})'.format(newFileName, dateFolderName, image['name']))
 
 
