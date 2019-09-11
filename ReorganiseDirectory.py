@@ -44,7 +44,8 @@ def getImages(service, folderID):
     '''
 
     results = service.files().list(
-        fields="nextPageToken, files(id, name)",
+        #to find other files metadata visit https://developers.google.com/drive/api/v3/reference/files
+        fields="nextPageToken, files(id, name, imageMediaMetadata)",
         q="mimeType contains 'image/' and '{}' in parents".format(folderID)).execute()
 
     return results.get('files', [])
@@ -71,5 +72,5 @@ if __name__ == '__main__':
     else:
         print('Files:')
         for image in images:
-            print(u'{0} ({1})'.format(image['name'], image['id']))
-    folder = createFolder(service, 'JustTest', folderID)
+            print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
+    #folder = createFolder(service, 'JustTest', folderID)
