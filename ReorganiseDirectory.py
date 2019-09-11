@@ -12,7 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 # If modifying these scopes, delete the file token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou48hiK4c'
 
@@ -50,6 +50,18 @@ def getImages(service, folderID):
     return results.get('files', [])
 
 
+def createFolder(service, folderName, parentID):
+    file_metadata = {
+        'name': folderName,
+        'parents': [parentID],
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
+    folder = service.files().create(body=file_metadata,
+                                        fields='id').execute()
+    print('Folder created {0}'.format(folder['id']))
+    return folder
+
+
 if __name__ == '__main__':
     service = getService()
     folderID = os.path.split(folderLink)[-1]
@@ -60,4 +72,4 @@ if __name__ == '__main__':
         print('Files:')
         for image in images:
             print(u'{0} ({1})'.format(image['name'], image['id']))
-
+    folder = createFolder(service, 'JustTest', folderID)
