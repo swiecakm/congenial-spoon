@@ -10,11 +10,14 @@ import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import datetime
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou48hiK4c'
+
+metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 
 def getService():
     creds = None
@@ -73,4 +76,5 @@ if __name__ == '__main__':
         print('Files:')
         for image in images:
             print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
+            print(datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat))
     #folder = createFolder(service, 'JustTest', folderID)
