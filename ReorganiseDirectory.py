@@ -21,6 +21,8 @@ metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 newImageNameFormat = '%Y%m%d%H%M%S'
 parentFolderNameFormat = '%Y%m%d'
 
+subfolderName = 'Sorted'
+
 def getService():
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
@@ -68,6 +70,25 @@ def createFolder(service, folderName, parentID):
     return folder
 
 
+def getFolder(service, folderName, parentID):
+    results = service.files().list(
+        # to find other files metadata visit https://developers.google.com/drive/api/v3/reference/files
+        fields="nextPageToken, files(id, name, imageMediaMetadata)",
+        q="mimeType = 'application/vnd.google-apps.folder' and '{0}' in parents and name='{1}' and trashed=False".format(parentID,
+                                                                                                       folderName)).\
+        execute()
+
+    if results['files']:
+        return results['files'][0]
+    else:
+        return None
+
+def createFolderOrGetExisting(service, folderName, parentID):
+    folder = getFolder(service, folderName, parentID)
+    if not folder:
+        folder = createFolder(service, folderName, parentID)
+    return folder
+
 if __name__ == '__main__':
     service = getService()
     folderID = os.path.split(folderLink)[-1]
@@ -83,4 +104,6 @@ if __name__ == '__main__':
                                            os.path.splitext(image['name'])[1])
             parentFolderName = '{}'.format(photoTakenDateTime.strftime(parentFolderNameFormat))
             print('{0} in {1} folder'.format(newFileName, parentFolderName))
+
+    print(createFolderOrGetExisting(service, 'Test', folderID))
     #folder = createFolder(service, 'JustTest', folderID)
