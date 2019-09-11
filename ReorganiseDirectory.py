@@ -16,7 +16,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 
 folderLink = 'https://drive.google.com/drive/folders/1sdjRrR7QCks3kdHs-1S0LR3ou48hiK4c'
 
-def getCredetials():
+def getService():
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -35,32 +35,29 @@ def getCredetials():
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
-    return creds
+    return build('drive', 'v3', credentials=creds)
 
 
-def listFiles(folderID):
+def getImages(service, folderID):
     '''
         folderID - You can find the folder ID entering it in web browser
     '''
-
-    creds = getCredetials()
-    service = build('drive', 'v3', credentials=creds)
 
     results = service.files().list(
         fields="nextPageToken, files(id, name)",
         q="mimeType contains 'image/' and '{}' in parents".format(folderID)).execute()
 
-    items = results.get('files', [])
-
-    if not items:
-        print('No files found.')
-    else:
-        print('Files:')
-        for item in items:
-            print(u'{0} ({1})'.format(item['name'], item['id']))
+    return results.get('files', [])
 
 
 if __name__ == '__main__':
-
+    service = getService()
     folderID = os.path.split(folderLink)[-1]
-    listFiles(folderID)
+    images = getImages(service, folderID)
+    if not images:
+        print('No files found.')
+    else:
+        print('Files:')
+        for image in images:
+            print(u'{0} ({1})'.format(image['name'], image['id']))
+
