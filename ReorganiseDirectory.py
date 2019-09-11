@@ -106,6 +106,7 @@ if __name__ == '__main__':
             newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
                                            os.path.splitext(image['name'])[1])
             dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
+            dateFolderID = createFolderOrGetExisting(service, dateFolderName, subparentID)['id']
             print('{0} in {1} folder'.format(newFileName, dateFolderName))
 
 
