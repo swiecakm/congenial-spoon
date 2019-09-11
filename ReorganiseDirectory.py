@@ -91,8 +91,8 @@ def createFolderOrGetExisting(service, folderName, parentID):
 
 if __name__ == '__main__':
     service = getService()
-    folderID = os.path.split(folderLink)[-1]
-    images = getImages(service, folderID)
+    rootParentID = os.path.split(folderLink)[-1]
+    images = getImages(service, rootParentID)
     if not images:
         print('No files found.')
     else:
@@ -105,5 +105,5 @@ if __name__ == '__main__':
             parentFolderName = '{}'.format(photoTakenDateTime.strftime(parentFolderNameFormat))
             print('{0} in {1} folder'.format(newFileName, parentFolderName))
 
-    print(createFolderOrGetExisting(service, 'Test', folderID))
+    print(createFolderOrGetExisting(service, 'Test', rootParentID))
     #folder = createFolder(service, 'JustTest', folderID)
