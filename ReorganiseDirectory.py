@@ -7,21 +7,24 @@
 from __future__ import print_function
 import pickle
 import os.path
+
+from googleapiclient import errors
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import datetime
+import time
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-folderLink = 'https://drive.google.com/drive/folders/1vt7MZIMWJtC3kESVvG0nraMqkYbyFBwl'
+folderLink = 'https://drive.google.com/drive/folders/1vDYJ5qekijKwK69sfG0cdEN-suHRGhyO'
 
 metadataDatetimeFormat = '%Y:%m:%d %H:%M:%S'
 newImageNameFormat = '%Y%m%d%H%M%S'
 dateFolderNameFormat = '%Y%m%d'
 
-subfolderName = 'Sorted'
+subfolderName = 'Sorted2'
 
 def getService():
     creds = None
@@ -45,17 +48,26 @@ def getService():
     return build('drive', 'v3', credentials=creds)
 
 
-def getImages(service, folderID):
+def getImages(service, folderID, pageToken=None):
     '''
         folderID - You can find the folder ID entering it in web browser
     '''
+    try:
+        results = service.files().list(
+            #to find other files metadata visit https://developers.google.com/drive/api/v3/reference/files
+            fields="nextPageToken, files(id, name, imageMediaMetadata)", pageToken=pageToken,
+            q="mimeType contains 'image/' and '{}' in parents and trashed=False".format(folderID)).execute()
+    except errors.HttpError as err:
+        if err.resp.status in [500, 503, 504]:
+            print('Server error {}'.format(err.resp.status))
+            print('Retrying getting files page in 5 seconds...'.format(image['name']))
+            time.sleep(5)
+            return getImages(service, folderID, pageToken=pageToken)
+        else:
+            print('Error during processing the file {}'.format(image['name']))
+            raise
 
-    results = service.files().list(
-        #to find other files metadata visit https://developers.google.com/drive/api/v3/reference/files
-        fields="nextPageToken, files(id, name, imageMediaMetadata)",
-        q="mimeType contains 'image/' and '{}' in parents and trashed=False".format(folderID)).execute()
-
-    return results.get('files', [])
+    return results.get('files', []), results.get('nextPageToken')
 
 
 def createFolder(service, folderName, parentID):
@@ -83,36 +95,59 @@ def getFolder(service, folderName, parentID):
     else:
         return None
 
+
 def createFolderOrGetExisting(service, folderName, parentID):
     folder = getFolder(service, folderName, parentID)
     if not folder:
         folder = createFolder(service, folderName, parentID)
     return folder
 
+
+def processImage(service, sourceFolderID, newFolderID, image):
+    print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
+    photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
+    newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
+                                  os.path.splitext(image['name'])[1])
+    dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
+    try:
+        dateFolderID = createFolderOrGetExisting(service, dateFolderName, newFolderID)['id']
+
+        metadata = {'name': newFileName}
+        newFile = service.files().copy(fileId=image['id'], body=metadata).execute()
+        service.files().update(fileId=newFile['id'], addParents=dateFolderID, removeParents=sourceFolderID).execute()
+
+        # service.files().update(fileID=newFile['id'], addParents=dateFolderID).execute()
+        print('created file {0} in {1} folder (from {2} file)'.format(newFileName, dateFolderName, image['name']))
+    except errors.HttpError as err:
+        if err.resp.status in [500, 503, 504]:
+            print('Server error {}'.format(err.resp.status))
+            print('Retrying processing the file {} in 5 seconds...'.format(image['name']))
+            time.sleep(5)
+            processImage(service, sourceFolderID, newFolderID, image)
+        else:
+            print('Error during processing the file {}'.format(image['name']))
+            raise
+
+
 if __name__ == '__main__':
     service = getService()
     rootParentID = os.path.split(folderLink)[-1]
+    subparentID = createFolderOrGetExisting(service, subfolderName, rootParentID)['id']
+    print('Subparent created {}'.format(subparentID))
 
-    images = getImages(service, rootParentID)
-    if not images:
-        print('No files found.')
-    else:
-        subparentID = createFolderOrGetExisting(service, 'Sorted', rootParentID)['id']
-        print('subparent created {}'.format(subparentID))
-        print('Files:')
-        for image in images:
-            print(u'{0} ({1}) {2}'.format(image['name'], image['id'], image['imageMediaMetadata']['time']))
-            photoTakenDateTime = datetime.datetime.strptime(image['imageMediaMetadata']['time'], metadataDatetimeFormat)
-            newFileName = '{0}{1}'.format(photoTakenDateTime.strftime(newImageNameFormat),
-                                           os.path.splitext(image['name'])[1])
-            dateFolderName = '{}'.format(photoTakenDateTime.strftime(dateFolderNameFormat))
-            dateFolderID = createFolderOrGetExisting(service, dateFolderName, subparentID)['id']
+    pageToken = None
+    filesCount = 0
 
-            metadata = {'name': newFileName}
-            newFile = service.files().copy(fileId=image['id'], body=metadata).execute()
-            service.files().update(fileId=newFile['id'], addParents=dateFolderID, removeParents=rootParentID).execute()
-
-            #service.files().update(fileID=newFile['id'], addParents=dateFolderID).execute()
-            print('created file {0} in {1} folder (from {2})'.format(newFileName, dateFolderName, image['name']))
-
+    while True:
+        print("Retrieving page of files")
+        images, pageToken = getImages(service, rootParentID, pageToken=pageToken)
+        if not images:
+            print('No files found.')
+        else:
+            for image in images:
+                processImage(service, rootParentID, subparentID, image)
+                filesCount += 1
+                print('{} files processed'.format(filesCount))
+        if not pageToken:
+            break
 
